@@ -1,4 +1,5 @@
 import math
+import random
 import numpy as np
 import matplotlib.pyplot as plt
 import gzip
@@ -23,8 +24,22 @@ def ReLU(x):
     return(x if x > 0 else 0)
 
 
+def sigmoid(x):
+    return(1 / (1 + (math.e ** (-x))))
+
+
 def normalize(array):
     return(array / np.sqrt(np.sum(array ** 2)))
+
+
+# def softmax(array):
+    # return(array / np.sqrt(np.sum(array ** 2)))
+
+
+def softmax(x):
+    """Compute softmax values for each sets of scores in x."""
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum(axis=0) # only difference
 
 
 class MnistDataLoader():
@@ -38,7 +53,7 @@ class MnistDataLoader():
     def __getitem__(self, idx):
         return({
             "image":self.images[idx],
-            "label":self.labels[idx],
+            "label":int(self.labels[idx]),
         })
 
 
@@ -49,17 +64,21 @@ class LinearLayer():
 
     def __post_init__(self):
         # For each node in output layer, generate empty weights and biases
-        self.layer_output = []
-        self.weights = np.random.uniform(-1,1,[self.out_size, self.in_size])
-        self.biases = np.random.uniform(-1,1,[self.out_size, self.in_size])
+        self.weights = np.random.randn(self.out_size, self.in_size) * \
+                np.sqrt(2 / self.in_size)
+        self.biases = np.random.uniform(0, 1, self.out_size)
+
 
     def calc(self, x):
-        x = normalize(x)
-        for i in range(self.out_size):
-            z = x * self.weights[i] + self.biases[i]
-            self.layer_output.append(z.sum())
+        """Function: z = Wx + b"""
+        layer_output = []
 
-        return self.layer_output
+        for i in range(self.out_size):
+            # z = Wx + b
+            z = np.dot(self.weights[i], x) + self.biases[i]
+            layer_output.append(z)
+
+        return(np.array(layer_output))
 
     def backprop():
         pass
@@ -67,18 +86,11 @@ class LinearLayer():
 
 class Net():
     def __init__(self, train, test):
-        self.train = train
-        self.test = test
-
-        self.l_size = 28
-        self.n_layers = 3
-
         self.L1 = LinearLayer(784, 50)
-        self.L2 = LinearLayer(50, 20)
-        self.L3 = LinearLayer(20, 10)
+        self.L2 = LinearLayer(50, 10)
 
     def forward(self, x):
-        """z = Wx + b"""
+        """Get prediction from nueral net"""
         x = x.reshape(784)
         x = self.L1.calc(x)
         x = np.array([ReLU(n) for n in x])
@@ -86,17 +98,16 @@ class Net():
         x = self.L2.calc(x)
         x = np.array([ReLU(n) for n in x])
 
-        x = self.L3.calc(x)
-        x = np.array([ReLU(n) for n in x])
+        x = np.argmax(x)
 
         return x
 
-    def train(self):
+def loss(results):
+    for i in range(10):
         pass
 
 
 if __name__=="__main__":
-    x = LinearLayer(50, 20)
     train_images = read_ubyte("data/train-images-idx3-ubyte.gz", is_img=True)
     test_images = read_ubyte("data/t10k-images-idx3-ubyte.gz", is_img=True)
     train_labels = read_ubyte("data/train-labels-idx1-ubyte.gz", is_img=False)
@@ -105,4 +116,18 @@ if __name__=="__main__":
     train_data = MnistDataLoader(train_images, train_labels)
     test_data = MnistDataLoader(test_images, test_labels)
     net = Net(train_data, test_data)
-    net.forward(train_data[9]["image"])
+
+    results = []
+
+    for image in train_data:
+        result = net.forward(image["image"])
+        results.append((result, image["label"]))
+
+        print("predicted", result)
+        print("label", image["label"])
+
+    loss(results)
+
+    plt.hist(results, bins=10)
+    plt.show()
+
