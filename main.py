@@ -2,6 +2,7 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 import gzip
+from dataclasses import dataclass
 
 
 def read_ubyte(filepath, is_img=True, image_size = 28, num_samples = 10000):
@@ -41,6 +42,29 @@ class MnistDataLoader():
         })
 
 
+@dataclass
+class LinearLayer():
+    in_size: int
+    out_size: int
+
+    def __post_init__(self):
+        # For each node in output layer, generate empty weights and biases
+        self.layer_output = []
+        self.weights = np.random.uniform(-1,1,[self.out_size, self.in_size])
+        self.biases = np.random.uniform(-1,1,[self.out_size, self.in_size])
+
+    def calc(self, x):
+        x = normalize(x)
+        for i in range(self.out_size):
+            z = x * self.weights[i] + self.biases[i]
+            self.layer_output.append(z.sum())
+
+        return self.layer_output
+
+    def backprop():
+        pass
+
+
 class Net():
     def __init__(self, train, test):
         self.train = train
@@ -49,40 +73,30 @@ class Net():
         self.l_size = 28
         self.n_layers = 3
 
-        self.weights = np.random.rand(self.n_layers, self.l_size, self.l_size)
-        self.biases = np.random.rand(self.l_size, 1)
+        self.L1 = LinearLayer(784, 50)
+        self.L2 = LinearLayer(50, 20)
+        self.L3 = LinearLayer(20, 10)
 
-    def forward(self, idx, layer):
+    def forward(self, x):
         """z = Wx + b"""
-        W = self.weights[layer]
-        X = normalize(self.train[idx]["image"])
-        b = self.biases
+        x = x.reshape(784)
+        x = self.L1.calc(x)
+        x = np.array([ReLU(n) for n in x])
 
-        z = np.matmul(X, W) + b
-        z = z.reshape(784)
+        x = self.L2.calc(x)
+        x = np.array([ReLU(n) for n in x])
 
-        print(z)
-        print(z.shape)
+        x = self.L3.calc(x)
+        x = np.array([ReLU(n) for n in x])
 
-        # Apply nonlinearity
-        z = np.array([ReLU(x) for x in z]).reshape((28, 28))
-
-        return
-
-    def linear(self, input_size, output_size):
-    #TODO Implement linear layer to go from size (784, 50) where
-    # 784 is the input size and 50 is the output size
+        return x
 
     def train(self):
-        i = 0
-        for j in range(self.n_layers):
-            self.forward(i, j)
-        # self.forward(2)
-        # for item in self.train:
-            # self.forward(2)
+        pass
 
 
 if __name__=="__main__":
+    x = LinearLayer(50, 20)
     train_images = read_ubyte("data/train-images-idx3-ubyte.gz", is_img=True)
     test_images = read_ubyte("data/t10k-images-idx3-ubyte.gz", is_img=True)
     train_labels = read_ubyte("data/train-labels-idx1-ubyte.gz", is_img=False)
@@ -91,4 +105,4 @@ if __name__=="__main__":
     train_data = MnistDataLoader(train_images, train_labels)
     test_data = MnistDataLoader(test_images, test_labels)
     net = Net(train_data, test_data)
-    net.forward(2, 0)
+    net.forward(train_data[9]["image"])
