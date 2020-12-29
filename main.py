@@ -155,7 +155,7 @@ if __name__=="__main__":
 
     train_accuracy = []
     train_loss = []
-    for epoch in range(10):
+    for epoch in range(30):
         correct = 0
         running_loss = 0
         for image in tqdm.tqdm(train_data):
@@ -170,6 +170,7 @@ if __name__=="__main__":
         train_accuracy.append(correct / len(train_data))
         train_loss.append(running_loss)
 
-    plt.plot(train_accuracy)
+    plt.plot(normalize(np.array(train_accuracy)))
+    plt.plot(normalize(np.array(train_loss)))
     plt.show()
 
