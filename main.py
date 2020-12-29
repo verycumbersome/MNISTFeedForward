@@ -4,6 +4,7 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 import gzip
+import tqdm
 from dataclasses import dataclass
 
 
@@ -31,10 +32,6 @@ def sigmoid(x):
 
 def normalize(array):
     return(array / np.sqrt(np.sum(array ** 2)))
-
-
-# def softmax(array):
-    # return(array / np.sqrt(np.sum(array ** 2)))
 
 
 def softmax(x):
@@ -92,6 +89,11 @@ class Net():
         self.L1 = LinearLayer(784, 50)
         self.L2 = LinearLayer(50, 10)
 
+        self.layers = [
+            self.L1,
+            self.L2
+        ]
+
     def forward(self, x):
         """Get prediction from nueral net"""
         x = x.reshape(784)
@@ -101,32 +103,45 @@ class Net():
         x = self.L2.calc(x)
         x = np.array([sigmoid(n) for n in x])
 
-        # x = np.argmax(x)
         x = softmax(x)
 
         return x
 
 def loss(pred, actual, net):
+    alpha = 0.1
     loss = 0
     if actual > 9:
-        return
+        return 0
 
     ground = np.zeros(len(pred))
     ground[actual] = 1
 
     # Binary cross entropy loss
     # Function: −(𝑦log(𝑝)+(1−𝑦)log(1−𝑝))
-    loss += -(np.dot(ground, np.log(pred.T)))
+    loss = -(np.dot(ground, np.log(pred.T)))
 
-    for j, z in enumerate(result[0] - ground):
+    # Update weights for each layer
+    for i, z in enumerate(pred - ground):
         X = net.L2.X
 
         # Gradient of loss w.r.t weights vector
-        dLdw = X.T * z
-        net.L2.weights[j] = net.L2.weights[j] - dLdw * 0.01
+        dL2dw = X.T * z
 
+        # Add weights to list to update net weights
+        updatedL2 = (net.L2.weights[i] - dL2dw * alpha)
+        net.L2.weights[i] = updatedL2
 
-    print(loss)
+        for j, d in enumerate(updatedL2 - net.L2.weights[i]):
+            X = net.L1.X
+
+            # Gradient of loss w.r.t weights vector
+            dL1dw = X.T * z
+
+            # Add weights to list to update net weights
+            updatedL1 = (net.L1.weights[i] - dL1dw * alpha)
+            net.L1.weights[i] = updatedL1
+
+    return (loss)
 
 if __name__=="__main__":
     train_images = read_ubyte("data/train-images-idx3-ubyte.gz", is_img=True)
@@ -138,17 +153,23 @@ if __name__=="__main__":
     test_data = MnistDataLoader(test_images, test_labels)
     net = Net(train_data, test_data)
 
-    results = []
-    for image in train_data:
-        result = net.forward(image["image"])
+    train_accuracy = []
+    train_loss = []
+    for epoch in range(10):
+        correct = 0
+        running_loss = 0
+        for image in tqdm.tqdm(train_data):
+            result = net.forward(image["image"])
 
-        print("predicted", np.argmax(result))
-        print("label", image["label"])
+            running_loss += loss(result, image["label"], net)
 
-        loss(result, image["label"], net)
+            if image["label"] == np.argmax(result):
+                correct += 1
 
-        time.sleep(1)
+        print(correct / len(train_data))
+        train_accuracy.append(correct / len(train_data))
+        train_loss.append(running_loss)
 
-    # plt.hist(results, bins=10)
-    # plt.show()
+    plt.plot(train_accuracy)
+    plt.show()
 
