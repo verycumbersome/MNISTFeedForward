@@ -1,3 +1,4 @@
+import time
 import math
 import random
 import numpy as np
@@ -67,10 +68,12 @@ class LinearLayer():
         self.weights = np.random.randn(self.out_size, self.in_size) * \
                 np.sqrt(2 / self.in_size)
         self.biases = np.random.uniform(0, 1, self.out_size)
+        self.X = []
 
 
     def calc(self, x):
         """Function: z = Wx + b"""
+        self.X = x
         layer_output = []
 
         for i in range(self.out_size):
@@ -93,19 +96,37 @@ class Net():
         """Get prediction from nueral net"""
         x = x.reshape(784)
         x = self.L1.calc(x)
-        x = np.array([ReLU(n) for n in x])
+        x = np.array([sigmoid(n) for n in x])
 
         x = self.L2.calc(x)
-        x = np.array([ReLU(n) for n in x])
+        x = np.array([sigmoid(n) for n in x])
 
-        x = np.argmax(x)
+        # x = np.argmax(x)
+        x = softmax(x)
 
         return x
 
-def loss(results):
-    for i in range(10):
-        pass
+def loss(pred, actual, net):
+    loss = 0
+    if actual > 9:
+        return
 
+    ground = np.zeros(len(pred))
+    ground[actual] = 1
+
+    # Binary cross entropy loss
+    # Function: −(𝑦log(𝑝)+(1−𝑦)log(1−𝑝))
+    loss += -(np.dot(ground, np.log(pred.T)))
+
+    for j, z in enumerate(result[0] - ground):
+        X = net.L2.X
+
+        # Gradient of loss w.r.t weights vector
+        dLdw = X.T * z
+        net.L2.weights[j] = net.L2.weights[j] - dLdw * 0.01
+
+
+    print(loss)
 
 if __name__=="__main__":
     train_images = read_ubyte("data/train-images-idx3-ubyte.gz", is_img=True)
@@ -118,16 +139,16 @@ if __name__=="__main__":
     net = Net(train_data, test_data)
 
     results = []
-
     for image in train_data:
         result = net.forward(image["image"])
-        results.append((result, image["label"]))
 
-        print("predicted", result)
+        print("predicted", np.argmax(result))
         print("label", image["label"])
 
-    loss(results)
+        loss(result, image["label"], net)
 
-    plt.hist(results, bins=10)
-    plt.show()
+        time.sleep(1)
+
+    # plt.hist(results, bins=10)
+    # plt.show()
 
