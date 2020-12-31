@@ -112,23 +112,25 @@ class Net():
 
         return x
 
-def gradient_descent(l, net):
+def delta(l, net):
     # Derivative of sigmoid(z) -> σ'(z) = σ(z)(1 - σ(z))
-    fpl = net.layers[l].X * (1 - net.layers[l].X)
+    fpl = net.layers[l].X * (np.ones(len(net.layers[l].X)) - net.layers[l].X)
 
     # Derivative of cross entropy cost function
     w = net.layers[l].weights
 
-    if l - 1 >= len(net.layers):
-        # print("layer" + str(l) + " prev layer: ", fpl.shape)
-        # print("layer" + str(l) + " weights", w.shape)
-        # print("layer" + str(l) + "", np.dot(fpl, w.T).shape)
+    if l == 0:
+        print("layer" + str(l) + " prev layer: ", fpl.shape)
+        print("layer" + str(l) + " weights", w.shape)
+        print("layer" + str(l) + "", np.dot(fpl, w.T).shape)
+        output = np.dot(fpl, w.T)
+        print(output)
         return np.dot(fpl, w.T)
 
-    # print("layer" + str(l) + " prev layer: ", fpl.shape)
-    # print("layer" + str(l) + " weights: ", w.shape)
-    # print("layer" + str(l) + "", np.dot(fpl, w.T).shape)
-    return np.dot(np.dot(fpl, w.T), gradient_descent(l - 1, net))
+    print("layer" + str(l) + " prev layer: ", fpl.shape)
+    print("layer" + str(l) + " weights: ", w.shape)
+    print("layer" + str(l) + "", np.dot(fpl, w.T).shape)
+    return np.dot(fpl, np.dot(w.T, delta(l - 1, net)))
 
 
 def loss(pred, actual, net):
@@ -145,7 +147,8 @@ def loss(pred, actual, net):
     for i in range(len(t)):
         loss -= t[i] * math.log(pred[i]) + (1 - t[i]) * math.log(1 - pred[i])
 
-    print(gradient_descent(0, net))
+    print(delta(1, net))
+    exit()
     # layer = net.L2
     # y = pred
     # for j in range(layer.out_size):
