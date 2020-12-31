@@ -27,7 +27,8 @@ def ReLU(x):
 
 
 def sigmoid(x):
-    return(1 / (1 + (math.e ** (-x))))
+    s = lambda k: 1 / (1 + (math.e ** (-k)))
+    return(np.array([s(xi) for xi in x]))
 
 
 def normalize(array):
@@ -54,6 +55,18 @@ class MnistDataLoader():
             "label":int(self.labels[idx]),
         })
 
+    def rand_sample(self, n):
+        r = random.randint(0, len(self.images))
+
+        output = []
+        for i in range(r, r + n):
+            idx = (i % len(self.images))
+            output.append({
+                "image":self.images[idx],
+                "label":int(self.labels[idx]),
+            })
+        return output
+
 
 @dataclass
 class LinearLayer():
@@ -62,26 +75,20 @@ class LinearLayer():
 
     def __post_init__(self):
         # For each node in output layer, generate empty weights and biases
+        # self.weights = np.random.uniform(0, 1, size =[self.out_size, self.in_size])
         self.weights = np.random.randn(self.out_size, self.in_size) * \
                 np.sqrt(2 / self.in_size)
         self.biases = np.random.uniform(0, 1, self.out_size)
         self.X = []
 
-
     def calc(self, x):
         """Function: z = Wx + b"""
         self.X = x
-        layer_output = []
 
-        for i in range(self.out_size):
-            # z = Wx + b
-            z = np.dot(self.weights[i], x) + self.biases[i]
-            layer_output.append(z)
+        self.z = np.dot(self.weights, x) + self.biases
+        self.layer_output = sigmoid(self.z)
 
-        return(np.array(layer_output))
-
-    def backprop():
-        pass
+        return(self.layer_output)
 
 
 class Net():
@@ -91,57 +98,75 @@ class Net():
 
         self.layers = [
             self.L1,
-            self.L2
+            self.L2,
         ]
 
     def forward(self, x):
         """Get prediction from nueral net"""
         x = x.reshape(784)
+
         x = self.L1.calc(x)
-        x = np.array([sigmoid(n) for n in x])
-
         x = self.L2.calc(x)
-        x = np.array([sigmoid(n) for n in x])
 
-        x = softmax(x)
+        # x = softmax(x)
 
         return x
 
+def gradient_descent(l, net):
+    # Derivative of sigmoid(z) -> σ'(z) = σ(z)(1 - σ(z))
+    fpl = net.layers[l].X * (1 - net.layers[l].X)
+
+    # Derivative of cross entropy cost function
+    w = net.layers[l].weights
+
+    if l - 1 >= len(net.layers):
+        # print("layer" + str(l) + " prev layer: ", fpl.shape)
+        # print("layer" + str(l) + " weights", w.shape)
+        # print("layer" + str(l) + "", np.dot(fpl, w.T).shape)
+        return np.dot(fpl, w.T)
+
+    # print("layer" + str(l) + " prev layer: ", fpl.shape)
+    # print("layer" + str(l) + " weights: ", w.shape)
+    # print("layer" + str(l) + "", np.dot(fpl, w.T).shape)
+    return np.dot(np.dot(fpl, w.T), gradient_descent(l - 1, net))
+
+
 def loss(pred, actual, net):
-    alpha = 0.1
+    alpha = 0.01
     loss = 0
     if actual > 9:
         return 0
 
-    ground = np.zeros(len(pred))
-    ground[actual] = 1
+    t = np.zeros(len(pred))
+    t[actual] = 1
 
     # Binary cross entropy loss
     # Function: −(𝑦log(𝑝)+(1−𝑦)log(1−𝑝))
-    loss = -(np.dot(ground, np.log(pred.T)))
+    for i in range(len(t)):
+        loss -= t[i] * math.log(pred[i]) + (1 - t[i]) * math.log(1 - pred[i])
 
-    # Update weights for each layer
-    for i, z in enumerate(pred - ground):
-        X = net.L2.X
+    print(gradient_descent(0, net))
+    # layer = net.L2
+    # y = pred
+    # for j in range(layer.out_size):
+        # for k in range(layer.in_size):
+            # # Derivative of sigmoid(z) -> σ'(z) = σ(z)(1 - σ(z))
+            # dAdZ = (y[j]) * (1 - y[j])
 
-        # Gradient of loss w.r.t weights vector
-        dL2dw = X.T * z
+            # # derivative of cross entropy cost function
+            # dCdA = y[j] - t[j] / dAdZ
 
-        # Add weights to list to update net weights
-        updatedL2 = (net.L2.weights[i] - dL2dw * alpha)
-        net.L2.weights[i] = updatedL2
+            # # Derivative of weight w.r.t z
+            # dZdW = layer.layer_output[j]
 
-        for j, d in enumerate(updatedL2 - net.L2.weights[i]):
-            X = net.L1.X
+            # # Derivative of cost w.r.t weight
+            # dCdW = (dAdZ * dCdA * dZdW)
+            # layer.weights[j][k] = layer.weights[j][k] - dCdW * alpha
 
-            # Gradient of loss w.r.t weights vector
-            dL1dw = X.T * z
-
-            # Add weights to list to update net weights
-            updatedL1 = (net.L1.weights[i] - dL1dw * alpha)
-            net.L1.weights[i] = updatedL1
+    exit()
 
     return (loss)
+
 
 if __name__=="__main__":
     train_images = read_ubyte("data/train-images-idx3-ubyte.gz", is_img=True)
@@ -155,10 +180,10 @@ if __name__=="__main__":
 
     train_accuracy = []
     train_loss = []
-    for epoch in range(30):
+    for epoch in range(200):
         correct = 0
         running_loss = 0
-        for image in tqdm.tqdm(train_data):
+        for image in tqdm.tqdm(train_data.rand_sample(200)):
             result = net.forward(image["image"])
 
             running_loss += loss(result, image["label"], net)
@@ -166,9 +191,12 @@ if __name__=="__main__":
             if image["label"] == np.argmax(result):
                 correct += 1
 
-        print(correct / len(train_data))
-        train_accuracy.append(correct / len(train_data))
+        train_accuracy.append(correct / 200)
         train_loss.append(running_loss)
+
+        print("Epoch:", epoch)
+        print("Accuracy:", correct / 200)
+        print("Loss:", running_loss)
 
     plt.plot(normalize(np.array(train_accuracy)))
     plt.plot(normalize(np.array(train_loss)))
