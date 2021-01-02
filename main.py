@@ -119,22 +119,29 @@ def delta(l, net):
     # Derivative of cross entropy cost function
     w = net.layers[l].weights
 
-    if l == 0:
+    if l == len(net.layers) + 1:
         print("layer" + str(l) + " prev layer: ", fpl.shape)
         print("layer" + str(l) + " weights", w.shape)
         print("layer" + str(l) + "", np.dot(fpl, w.T).shape)
+
+        # Derivative of sigmoid(z) -> σ'(z) = σ(z)(1 - σ(z))
+        dAdZ = (z) * (np.ones(len(z)) - z)
+
+        # derivative of cross entropy cost function
+        dCdA = (y - t) / dAdZ
+
         output = np.dot(fpl, w.T)
-        print(output)
         return np.dot(fpl, w.T)
 
     print("layer" + str(l) + " prev layer: ", fpl.shape)
     print("layer" + str(l) + " weights: ", w.shape)
     print("layer" + str(l) + "", np.dot(fpl, w.T).shape)
-    return np.dot(fpl, np.dot(w.T, delta(l - 1, net)))
+
+    return np.multiply(np.dot(fpl, w.T), delta(l + 1, net))
 
 
 def loss(pred, actual, net):
-    alpha = 0.01
+    alpha = 0.1
     loss = 0
     if actual > 9:
         return 0
@@ -144,11 +151,33 @@ def loss(pred, actual, net):
 
     # Binary cross entropy loss
     # Function: −(𝑦log(𝑝)+(1−𝑦)log(1−𝑝))
-    for i in range(len(t)):
-        loss -= t[i] * math.log(pred[i]) + (1 - t[i]) * math.log(1 - pred[i])
+    # for i in range(len(t)):
+        # loss -= t[i] * math.log(pred[i]) + (1 - t[i]) * math.log(1 - pred[i])
 
-    print(delta(1, net))
+
+    print(delta(0, net))
     exit()
+    # layer = net.L2
+    # y = pred
+    # z = layer.layer_output
+    # # Derivative of sigmoid(z) -> σ'(z) = σ(z)(1 - σ(z))
+    # dAdZ = (z) * (np.ones(len(z)) - z)
+    # print(dAdZ.shape)
+
+    # # derivative of cross entropy cost function
+    # dCdA = (y - t) / dAdZ
+
+    # # Derivative of weight w.r.t z
+    # dZdW = layer.X
+    # print(dCdA.shape)
+
+    # # Derivative of cost w.r.t weight
+    # dCdW = (dAdZ * dCdA * dZdW)
+    # layer.weights = layer.weights - dCdW * alpha
+
+
+
+
     # layer = net.L2
     # y = pred
     # for j in range(layer.out_size):
@@ -157,7 +186,7 @@ def loss(pred, actual, net):
             # dAdZ = (y[j]) * (1 - y[j])
 
             # # derivative of cross entropy cost function
-            # dCdA = y[j] - t[j] / dAdZ
+            # dCdA = (y[j] - t[j]) / dAdZ
 
             # # Derivative of weight w.r.t z
             # dZdW = layer.layer_output[j]
@@ -165,8 +194,6 @@ def loss(pred, actual, net):
             # # Derivative of cost w.r.t weight
             # dCdW = (dAdZ * dCdA * dZdW)
             # layer.weights[j][k] = layer.weights[j][k] - dCdW * alpha
-
-    exit()
 
     return (loss)
 
