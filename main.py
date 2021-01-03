@@ -2,22 +2,30 @@ import time
 import math
 import random
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import gzip
 import tqdm
 from dataclasses import dataclass
 
 
-def read_ubyte(filepath, is_img=True, image_size = 28, num_samples = 10000):
+def read_ubyte(filepath, is_img = True, image_size = 28, num_samples = 10000):
     f = gzip.open(filepath, "r")
     if (is_img):
+        num_samples = 3
         buf = f.read(image_size * image_size * num_samples)
-        data = np.frombuffer(buf, dtype=np.uint8).astype(np.float32)
-        data = data.reshape(num_samples, image_size, image_size, 1)
+        data = np.frombuffer(buf, dtype = np.uint8).astype(np.float32)
+        data = data.reshape(num_samples, image_size, image_size)
+
+        # plt.imshow(data[2], cmap="gray")
+        # plt.show()
+        # exit()
+
 
     else:
         buf = f.read(num_samples)
         data = np.frombuffer(buf, dtype=np.uint8).astype(np.float32)
+
 
     return(data.squeeze())
 
@@ -30,10 +38,10 @@ def sigmoid(x):
     s = lambda k: 1 / (1 + (math.e ** (-k)))
     return(np.array([s(xi) for xi in x]))
 
+
 def sigprime(x):
     sA = sigmoid(x) * (np.ones(len(x)) - sigmoid(x))
     return(sA)
-
 
 
 def normalize(array):
@@ -97,7 +105,7 @@ class LinearLayer():
 
 
 class Net():
-    def __init__(self, train, test):
+    def __init__(self):
         self.L1 = LinearLayer(784, 50)
         self.L2 = LinearLayer(50, 10)
 
@@ -128,7 +136,7 @@ def delta(l, t, net):
     if l == len(net.layers) - 1:
         # derivative of cross entropy cost function
         y = net.layers[l].layer_output
-        dCdA = -1 * (t / y) + ((1 - t) / (1 - y))
+        dCdA = -1 * ((t / y) + ((1 - t) / (1 - y)))
 
         return np.multiply(dCdA, dA)
 
@@ -152,116 +160,35 @@ def loss(pred, actual, net):
     # for i in range(len(t)):
         # loss -= t[i] * math.log(pred[i]) + (1 - t[i]) * math.log(1 - pred[i])
 
+    D1 = delta(0, t, net)
+    D2 = delta(1, t, net)
 
-    # print(delta(0, t, net))
-    layer = net.L2
-    t = np.zeros(len(pred))
-    t[actual] = 1
+    for i in range(50):
+        for j in range(784):
+            print(net.L1.weights[i][j])
+    net.L1.weights -= D1 * net.L2.X
+    # net.L1.weights -= D1 * net.L1.X
 
-    G = pred - actual
-    S = sigprime(net.L2.z)
-    D = np.multiply(G, S)
-
-    D2 = np.multiply(np.dot(net.L2.weights.T, D), sigprime(net.L1.z))
-    # L2grad = delta(1, t, net)
-
-    # net.L1.weights = net.L1.weights - (L1grad.T * alpha)
-    # net.L2.weights = net.L2.weights - (L2grad.T * alpha)
-
-    # print(D2.shape)
-    # print(net.L1.layer_output.shape)
-    D = delta(1, t, net)
-    D2 = delta(0, t, net)
-
-    for j in range(net.L1.out_size):
-        for k in range(net.L1.in_size):
-            net.L1.weights[j][k] -= net.L1.X[k] * D2[j] * alpha
-
-    for j in range(net.L2.out_size):
-        for k in range(net.L2.in_size):
-            net.L2.weights[j][k] -= net.L1.layer_output[k] * D[j] * alpha
-            # print(net.L2.weights[j][k])
-            # print(D[j])
-            # print(net.L1.layer_output[k])
-            # print(net.L2.weights - D)
-
-    # print(np.dot(D2, net.L2.X.T))
-
-
-    # for i in range(len(L2Delta)):
-        # print(layer.weights[i])
-
-    # layer = net.L1
-    # for j in range(layer.out_size):
-        # for k in range(layer.in_size):
-            # t = np.zeros(len(pred))
-            # t[actual] = 1
-
-            # L1Delta.append(layer.X * delta(1, t, net))
-
-    # print(L2Delta)
-    # print(L1Delta)
-
-    # exit()
-            # layer.X
-    # net.L2.weights -= delta(1, t, net)
-    # print(net.L2.weights)
-    # print(net.L1.weights)
-    # layer = net.L2
-    # y = pred
-    # z = layer.layer_output
-    # # Derivative of sigmoid(z) -> σ'(z) = σ(z)(1 - σ(z))
-    # dAdZ = (z) * (np.ones(len(z)) - z)
-    # print(dAdZ.shape)
-
-    # # derivative of cross entropy cost function
-    # dCdA = (y - t) / dAdZ
-
-    # # Derivative of weight w.r.t z
-    # dZdW = layer.X
-    # print(dCdA.shape)
-
-    # # Derivative of cost w.r.t weight
-    # dCdW = (dAdZ * dCdA * dZdW)
-    # layer.weights = layer.weights - dCdW * alpha
-
-
-
-
-    # layer = net.L2
-    # y = pred
-    # for j in range(layer.out_size):
-        # for k in range(layer.in_size):
-            # # Derivative of sigmoid(z) -> σ'(z) = σ(z)(1 - σ(z))
-            # dAdZ = (y[j]) * (1 - y[j])
-
-            # # derivative of cross entropy cost function
-            # dCdA = (y[j] - t[j]) / dAdZ
-
-            # # Derivative of weight w.r.t z
-            # dZdW = layer.layer_output[j]
-
-            # # Derivative of cost w.r.t weight
-            # dCdW = (dAdZ * dCdA * dZdW)
-            # layer.weights[j][k] = layer.weights[j][k] - dCdW * alpha
+    net.L1.biases -= D1
+    net.L2.biases -= D2
 
     return (loss)
 
 
 if __name__=="__main__":
-    train_images = read_ubyte("data/train-images-idx3-ubyte.gz", is_img=True)
-    test_images = read_ubyte("data/t10k-images-idx3-ubyte.gz", is_img=True)
-    train_labels = read_ubyte("data/train-labels-idx1-ubyte.gz", is_img=False)
-    test_labels = read_ubyte("data/t10k-labels-idx1-ubyte.gz", is_img=False)
+    data_train = pd.read_csv("data/train.csv")
+
+    train_labels = np.array(data_train.iloc[:, 0])
+    train_images = np.array(data_train.iloc[:, 1:]).reshape(42000, 28, 28)
 
     train_data = MnistDataLoader(train_images, train_labels)
-    test_data = MnistDataLoader(test_images, test_labels)
-    net = Net(train_data, test_data)
+    net = Net()
 
     train_accuracy = []
     train_loss = []
-    for epoch in range(2):
+    for epoch in range(200):
         correct = 0
+        counter = 0
         running_loss = 0
         for image in tqdm.tqdm(train_data.rand_sample(200)):
             result = net.forward(image["image"])
@@ -271,11 +198,13 @@ if __name__=="__main__":
             if image["label"] == np.argmax(result):
                 correct += 1
 
-        train_accuracy.append(correct / 200)
+            counter += 1
+
+        train_accuracy.append(correct / counter)
         train_loss.append(running_loss)
 
         print("Epoch:", epoch)
-        print("Accuracy:", correct / 200)
+        print("Accuracy:", correct / counter)
         print("Loss:", running_loss)
 
     plt.plot(normalize(np.array(train_accuracy)))
