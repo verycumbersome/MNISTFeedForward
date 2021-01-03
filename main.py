@@ -1,5 +1,6 @@
 import time
 import math
+import copy
 import random
 import numpy as np
 import pandas as pd
@@ -98,8 +99,7 @@ class Net():
 
         return x
 
-    def backprop(self, pred, actual):
-        alpha = 0.01
+    def backprop(self, pred, actual, alpha = 0.01):
         t = np.zeros(len(pred))
         t[actual] = 1
 
@@ -135,21 +135,21 @@ class Net():
         return np.multiply(np.dot(w.T, self.delta(l + 1, t)), dA)
 
 
-    def loss(self, pred, actual):
-        """ Binary cross entropy loss.
-            Function: −(𝑦log(𝑝)+(1−𝑦)log(1−𝑝))"""
-        alpha = 0.01
-        loss = 0
-        if actual > 9:
-            return 0
+def loss(pred, actual):
+	""" Binary cross entropy loss.
+		Function: −(𝑦log(𝑝)+(1−𝑦)log(1−𝑝))"""
+	alpha = 0.01
+	loss = 0
+	if actual > 9:
+		return 0
 
-        t = np.zeros(len(pred))
-        t[actual] = 1
+	t = np.zeros(len(pred))
+	t[actual] = 1
 
-        for i in range(len(t)):
-            loss -= t[i] * math.log(pred[i]) + (1 - t[i]) * math.log(1 - pred[i])
+	for i in range(len(t)):
+		loss -= t[i] * math.log(pred[i]) + (1 - t[i]) * math.log(1 - pred[i])
 
-        return(loss)
+	return(loss)
 
 
 if __name__=="__main__":
@@ -169,62 +169,30 @@ if __name__=="__main__":
 
     train_accuracy = []
     train_loss = []
-    test_accuracy = []
-    test_loss = []
-    for epoch in range(12):
+    for epoch in range(20):
         correct = 0
         counter = 0
         running_loss = 0
-        print("Epoch:", epoch + 1)
-        for i, image in enumerate(tqdm.tqdm(train_data)):
-            f = normalize(image["image"])
-            result = net.forward(f)
+        for image in tqdm.tqdm(train_data):
+            result = net.forward(image["image"])
 
-            running_loss += net.loss(result, image["label"])
-            net.backprop(result, image["label"])
-
-            if image["label"] == np.argmax(result):
-                correct += 1
-            counter += 1
-
-            if (i + 1) % 20 == 0:
-                train_accuracy.append(correct / counter)
-                train_loss.append(running_loss)
-                running_loss = 0
-
-        print("Train Accuracy:", correct / counter)
-        print("Train Loss:", running_loss)
-
-        correct = 0
-        counter = 0
-        running_loss = 0
-        for i, image in enumerate(test_data):
-            f = normalize(image["image"])
-            result = net.forward(f)
-
-            running_loss += net.loss(result, image["label"])
+            running_loss += loss(result, image["label"])
+            alpha = 0.0001 if epoch < 3 else 0.001
+            net.backprop(result, image["label"], alpha)
 
             if image["label"] == np.argmax(result):
                 correct += 1
+
             counter += 1
 
-            if (i + 1) % 20 == 0:
-                test_accuracy.append(correct / counter)
-                test_loss.append(running_loss)
-                running_loss = 0
+        train_accuracy.append(correct / counter)
+        train_loss.append(running_loss)
 
-        print("Test Accuracy:", correct / counter)
-        print("Test Loss:", running_loss)
-        print()
+        print("Epoch:", epoch)
+        print("Accuracy:", correct / counter)
+        print("Loss:", running_loss)
 
-    plot1 = plt.figure(1)
     plt.plot(normalize(np.array(train_accuracy)), label="Train accuracy")
-    plt.plot(normalize(np.array(test_accuracy)), label="Test accuracy")
-    plt.legend(loc="upper left")
-
-    plot2 = plt.figure(2)
     plt.plot(normalize(np.array(train_loss)), label="Train loss")
-    plt.plot(normalize(np.array(test_loss)), label="Test loss")
     plt.legend(loc="upper left")
-
     plt.show()
