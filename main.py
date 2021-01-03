@@ -30,6 +30,11 @@ def sigmoid(x):
     s = lambda k: 1 / (1 + (math.e ** (-k)))
     return(np.array([s(xi) for xi in x]))
 
+def sigprime(x):
+    sA = sigmoid(x) * (np.ones(len(x)) - sigmoid(x))
+    return(sA)
+
+
 
 def normalize(array):
     return(array / np.sqrt(np.sum(array ** 2)))
@@ -112,32 +117,25 @@ class Net():
 
         return x
 
-def delta(l, net):
+    def backprop():
+        pass
+
+
+def delta(l, t, net):
     # Derivative of sigmoid(z) -> σ'(z) = σ(z)(1 - σ(z))
-    fpl = net.layers[l].X * (np.ones(len(net.layers[l].X)) - net.layers[l].X)
+    dA = sigprime(net.layers[l].z)
 
-    # Derivative of cross entropy cost function
-    w = net.layers[l].weights
-
-    if l == len(net.layers) + 1:
-        print("layer" + str(l) + " prev layer: ", fpl.shape)
-        print("layer" + str(l) + " weights", w.shape)
-        print("layer" + str(l) + "", np.dot(fpl, w.T).shape)
-
-        # Derivative of sigmoid(z) -> σ'(z) = σ(z)(1 - σ(z))
-        dAdZ = (z) * (np.ones(len(z)) - z)
-
+    if l == len(net.layers) - 1:
         # derivative of cross entropy cost function
-        dCdA = (y - t) / dAdZ
+        y = net.layers[l].layer_output
+        dCdA = -1 * (t / y) + ((1 - t) / (1 - y))
 
-        output = np.dot(fpl, w.T)
-        return np.dot(fpl, w.T)
+        return np.multiply(dCdA, dA)
 
-    print("layer" + str(l) + " prev layer: ", fpl.shape)
-    print("layer" + str(l) + " weights: ", w.shape)
-    print("layer" + str(l) + "", np.dot(fpl, w.T).shape)
+    # Get the weights at the next layer
+    w = net.layers[l + 1].weights
 
-    return np.multiply(np.dot(fpl, w.T), delta(l + 1, net))
+    return np.multiply(np.dot(w.T, delta(l + 1, t, net)), dA)
 
 
 def loss(pred, actual, net):
@@ -155,8 +153,60 @@ def loss(pred, actual, net):
         # loss -= t[i] * math.log(pred[i]) + (1 - t[i]) * math.log(1 - pred[i])
 
 
-    print(delta(0, net))
-    exit()
+    # print(delta(0, t, net))
+    layer = net.L2
+    t = np.zeros(len(pred))
+    t[actual] = 1
+
+    G = pred - actual
+    S = sigprime(net.L2.z)
+    D = np.multiply(G, S)
+
+    D2 = np.multiply(np.dot(net.L2.weights.T, D), sigprime(net.L1.z))
+    # L2grad = delta(1, t, net)
+
+    # net.L1.weights = net.L1.weights - (L1grad.T * alpha)
+    # net.L2.weights = net.L2.weights - (L2grad.T * alpha)
+
+    # print(D2.shape)
+    # print(net.L1.layer_output.shape)
+    D = delta(1, t, net)
+    D2 = delta(0, t, net)
+
+    for j in range(net.L1.out_size):
+        for k in range(net.L1.in_size):
+            net.L1.weights[j][k] -= net.L1.X[k] * D2[j] * alpha
+
+    for j in range(net.L2.out_size):
+        for k in range(net.L2.in_size):
+            net.L2.weights[j][k] -= net.L1.layer_output[k] * D[j] * alpha
+            # print(net.L2.weights[j][k])
+            # print(D[j])
+            # print(net.L1.layer_output[k])
+            # print(net.L2.weights - D)
+
+    # print(np.dot(D2, net.L2.X.T))
+
+
+    # for i in range(len(L2Delta)):
+        # print(layer.weights[i])
+
+    # layer = net.L1
+    # for j in range(layer.out_size):
+        # for k in range(layer.in_size):
+            # t = np.zeros(len(pred))
+            # t[actual] = 1
+
+            # L1Delta.append(layer.X * delta(1, t, net))
+
+    # print(L2Delta)
+    # print(L1Delta)
+
+    # exit()
+            # layer.X
+    # net.L2.weights -= delta(1, t, net)
+    # print(net.L2.weights)
+    # print(net.L1.weights)
     # layer = net.L2
     # y = pred
     # z = layer.layer_output
@@ -210,7 +260,7 @@ if __name__=="__main__":
 
     train_accuracy = []
     train_loss = []
-    for epoch in range(200):
+    for epoch in range(2):
         correct = 0
         running_loss = 0
         for image in tqdm.tqdm(train_data.rand_sample(200)):
