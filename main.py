@@ -35,8 +35,8 @@ def ReLU(x):
 
 
 def sigmoid(x):
-    s = lambda k: 1 / (1 + (math.e ** (-k)))
-    return(np.array([s(xi) for xi in x]))
+    # s = lambda k: 1 / (1 + (math.e ** (-xi)))
+    return(np.array([1 / (1 + (math.e ** (-xi))) for xi in x]))
 
 
 def sigprime(x):
@@ -125,29 +125,53 @@ class Net():
 
         return x
 
-    def backprop():
-        pass
+    def backprop(self, pred, actual):
+        alpha = 0.01
+        t = np.zeros(len(pred))
+        t[actual] = 1
 
+        # G = pred - t
+        # G = (pred - t) / (pred * (np.ones(len(pred)) - pred))
+        # S = sigprime(self.L2.z)
+        # D2 = np.multiply(G, S)
 
-def delta(l, t, net):
-    # Derivative of sigmoid(z) -> σ'(z) = σ(z)(1 - σ(z))
-    dA = sigprime(net.layers[l].z)
+        # D1 = np.multiply(np.dot(self.L2.weights.T, D2), sigprime(self.L1.z))
 
-    if l == len(net.layers) - 1:
-        # derivative of cross entropy cost function
-        y = net.layers[l].layer_output
-        dCdA = -1 * ((t / y) + ((1 - t) / (1 - y)))
+        D1 = self.delta(0, t)
+        D2 = self.delta(1, t)
 
-        return np.multiply(dCdA, dA)
+        for i in range(50):
+            for j in range(784):
+                self.L1.weights[i][j] -= D1[i] * self.L1.X[j] * alpha
 
-    # Get the weights at the next layer
-    w = net.layers[l + 1].weights
+        for i in range(10):
+            for j in range(50):
+                self.L2.weights[i][j] -= D2[i] * self.L2.X[j] * alpha
 
-    return np.multiply(np.dot(w.T, delta(l + 1, t, net)), dA)
+        # self.L1.weights -= D1 * self.L2.X
+        # self.L1.weights -= D1 * self.L1.X
+
+        self.L1.biases -= D1 * alpha
+        self.L2.biases -= D2 * alpha
+
+    def delta(self, l, t):
+        # Derivative of sigmoid(z) -> σ'(z) = σ(z)(1 - σ(z))
+        dA = sigprime(self.layers[l].z)
+
+        if l == len(self.layers) - 1:
+            pred = self.layers[l].layer_output
+            G = (pred - t) / (pred * (np.ones(len(pred)) - pred))
+            S = sigprime(self.L2.z)
+            return np.multiply(G, S)
+
+        # Get the weights at the next layer
+        w = self.layers[l + 1].weights
+
+        return np.multiply(np.dot(w.T, self.delta(l + 1, t)), dA)
 
 
 def loss(pred, actual, net):
-    alpha = 0.1
+    alpha = 0.01
     loss = 0
     if actual > 9:
         return 0
@@ -157,22 +181,10 @@ def loss(pred, actual, net):
 
     # Binary cross entropy loss
     # Function: −(𝑦log(𝑝)+(1−𝑦)log(1−𝑝))
-    # for i in range(len(t)):
-        # loss -= t[i] * math.log(pred[i]) + (1 - t[i]) * math.log(1 - pred[i])
+    for i in range(len(t)):
+        loss -= t[i] * math.log(pred[i]) + (1 - t[i]) * math.log(1 - pred[i])
 
-    D1 = delta(0, t, net)
-    D2 = delta(1, t, net)
-
-    for i in range(50):
-        for j in range(784):
-            print(net.L1.weights[i][j])
-    net.L1.weights -= D1 * net.L2.X
-    # net.L1.weights -= D1 * net.L1.X
-
-    net.L1.biases -= D1
-    net.L2.biases -= D2
-
-    return (loss)
+    return(loss)
 
 
 if __name__=="__main__":
@@ -181,19 +193,20 @@ if __name__=="__main__":
     train_labels = np.array(data_train.iloc[:, 0])
     train_images = np.array(data_train.iloc[:, 1:]).reshape(42000, 28, 28)
 
-    train_data = MnistDataLoader(train_images, train_labels)
+    train_data = MnistDataLoader(train_images[:500], train_labels[:500])
     net = Net()
 
     train_accuracy = []
     train_loss = []
-    for epoch in range(200):
+    for epoch in range(20):
         correct = 0
         counter = 0
         running_loss = 0
-        for image in tqdm.tqdm(train_data.rand_sample(200)):
+        for image in tqdm.tqdm(train_data):
             result = net.forward(image["image"])
 
             running_loss += loss(result, image["label"], net)
+            net.backprop(result, image["label"])
 
             if image["label"] == np.argmax(result):
                 correct += 1
