@@ -109,10 +109,7 @@ class Net():
             D = self.delta(l, t)
 
             # Update each layer weights given the error at each layer
-            for i in range(len(D)):
-                for j in range(len(L.X)):
-                    L.weights[i][j] -= D[i] * L.X[j] * alpha
-                    # L.weights[i][j] -= np.outer(D, L.X) * alpha
+            L.weights -= np.outer(D, L.X) * alpha
 
             # Update layer biases
             L.biases -= D * alpha
