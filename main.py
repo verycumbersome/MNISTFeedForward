@@ -65,7 +65,7 @@ class LinearLayer():
     def __post_init__(self):
         # For each node in output layer, generate empty weights and biases
         self.weights = np.random.randn(self.out_size, self.in_size) * \
-                np.sqrt(2 / self.in_size)
+            np.sqrt(2 / self.in_size)
         self.biases = np.random.uniform(0, 1, self.out_size)
         self.X = []
 
@@ -133,25 +133,27 @@ class Net():
 
 
 def loss(pred, actual):
-	""" Binary cross entropy loss.
-		Function: −(𝑦log(𝑝)+(1−𝑦)log(1−𝑝))"""
-	alpha = 0.01
-	loss = 0
-	if actual > 9:
-		return 0
+    """ Binary cross entropy loss.
+    Function: −(𝑦log(𝑝)+(1−𝑦)log(1−𝑝))"""
+    alpha = 0.01
+    loss = 0
+    if actual > 9:
+        return 0
 
-	t = np.zeros(len(pred))
-	t[actual] = 1
+    t = np.zeros(len(pred))
+    t[actual] = 1
 
-	for i in range(len(t)):
-		loss -= t[i] * math.log(pred[i]) + (1 - t[i]) * math.log(1 - pred[i])
+    for i in range(len(t)):
+        loss -= t[i] * math.log(pred[i]) + (1 - t[i]) * math.log(1 - pred[i])
 
-	return(loss)
+    return(loss)
 
 
 def train_model(model, train_data, val_data, num_epochs=20):
-    train_accuracy, val_accuracy = [], []
-    train_loss, val_loss = [], []
+    stats = {
+        "accuracy":{"Train":[],"Val":[]},
+        "loss":{"Train":[], "Val":[]}
+    }
 
     for epoch in range(num_epochs):
         print("Epoch:", epoch)
@@ -175,27 +177,27 @@ def train_model(model, train_data, val_data, num_epochs=20):
                     correct += 1
 
             # Training statistics
-            if phase == "Train":
-                train_accuracy.append(correct / len(dataset))
-                train_loss.append(running_loss)
-            else:
-                val_accuracy.append(correct / len(dataset))
-                val_loss.append(running_loss)
+            stats["accuracy"][phase].append(acc := correct / len(dataset))
+            stats["loss"][phase].append(running_loss)
 
-
-            print("{} Accuracy:".format(phase), correct / len(dataset))
+            print("{} Accuracy:".format(phase), acc)
             print("{} Loss:".format(phase), running_loss)
         print()
 
-    # Plot everything
-    plt.plot(normalize(np.array(train_accuracy)), label="Train accuracy")
-    plt.plot(normalize(np.array(train_loss)), label="Train loss")
-    plt.plot(normalize(np.array(val_accuracy)), label="Val accuracy")
-    plt.plot(normalize(np.array(val_loss)), label="Val loss")
-    plt.legend(loc="upper left")
-    plt.show()
+    plot_train_data(stats)
 
     return model
+
+def plot_train_data(stats):
+    """Plots all data from model training"""
+    fig = plt.figure(1)
+    for i, stat in enumerate(stats):
+        ax = fig.add_subplot(2, 1, i + 1)
+        for phase in stats[stat]:
+            ax.plot(stats[stat][phase], label="{} {}".format(phase, stat))
+            ax.legend(loc="upper left")
+
+    plt.show()
 
 
 if __name__=="__main__":
