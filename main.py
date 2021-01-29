@@ -163,7 +163,7 @@ def train_model(model, train_data, val_data, num_epochs=20):
             running_loss = 0
 
             # Iterate through train and val datasets
-            for image in tqdm.tqdm(dataset):
+            for image in tqdm.tqdm(dataset, desc=phase):
                 result = model.forward(image["image"])
 
                 running_loss += loss(result, image["label"])
@@ -188,11 +188,14 @@ def train_model(model, train_data, val_data, num_epochs=20):
 
     return model
 
+
 def plot_train_data(stats):
     """Plots all data from model training"""
     fig = plt.figure(1)
     for i, stat in enumerate(stats):
         ax = fig.add_subplot(2, 1, i + 1)
+        ax.set_ylabel(stat)
+
         for phase in stats[stat]:
             ax.plot(stats[stat][phase], label="{} {}".format(phase, stat))
             ax.legend(loc="upper left")
@@ -210,7 +213,7 @@ if __name__=="__main__":
     test_labels = np.array(data_test.iloc[:, 0])
     test_images = np.array(data_test.iloc[:, 1:]).reshape(data_test.shape[0], 28, 28)
 
-    n = 20
+    n = 2000
     train_data = MnistDataLoader(train_images[:n], train_labels[:n])
     test_data = MnistDataLoader(test_images[:n], test_labels[:n])
     net = Net()
