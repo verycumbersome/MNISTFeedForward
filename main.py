@@ -11,12 +11,13 @@ from dataclasses import dataclass
 
 
 def sigmoid(x):
+    """Sigmoid functions for a numpy array"""
     return(np.array([1 / (1 + (math.e ** (-xi))) for xi in x]))
 
 
 def sigprime(x):
-    sA = sigmoid(x) * (np.ones(len(x)) - sigmoid(x))
-    return(sA)
+    """Derivative of sigmoid functions for a numpy array"""
+    return(sigmoid(x) * (np.ones(len(x)) - sigmoid(x)))
 
 
 def normalize(array):
@@ -103,23 +104,22 @@ class Net():
         t = np.zeros(len(pred))
         t[actual] = 1
 
-        # Find the error at each layer
-        D1 = self.delta(0, t)
-        D2 = self.delta(1, t)
+        for l, L in enumerate(self.layers):
+            # Find the error at each layer
+            D = self.delta(l, t)
 
-        # Update each layer given the error at each layer
-        for i in range(50):
-            for j in range(784):
-                self.L1.weights[i][j] -= D1[i] * self.L1.X[j] * alpha
+            # Update each layer weights given the error at each layer
+            for i in range(len(D)):
+                for j in range(len(L.X)):
+                    L.weights[i][j] -= D[i] * L.X[j] * alpha
+                    # L.weights[i][j] -= np.outer(D, L.X) * alpha
 
-        for i in range(10):
-            for j in range(50):
-                self.L2.weights[i][j] -= D2[i] * self.L2.X[j] * alpha
+            # Update layer biases
+            L.biases -= D * alpha
 
-        self.L1.biases -= D1 * alpha
-        self.L2.biases -= D2 * alpha
 
     def delta(self, l, t):
+        """Find delta between each layer(l) and the target value(t)"""
         # Derivative of sigmoid(z) -> σ'(z) = σ(z)(1 - σ(z))
         dA = sigprime(self.layers[l].z)
 
@@ -152,6 +152,55 @@ def loss(pred, actual):
 	return(loss)
 
 
+def train_model(model, train_data, val_data, num_epochs=20):
+    train_accuracy, val_accuracy = [], []
+    train_loss, val_loss = [], []
+
+    for epoch in range(num_epochs):
+        print("Epoch:", epoch)
+        for phase in ["Train", "Val"]:
+            dataset = train_data if phase == "Train" else val_data
+            correct = 0
+            running_loss = 0
+
+            # Iterate through train and val datasets
+            for image in tqdm.tqdm(dataset):
+                result = model.forward(image["image"])
+
+                running_loss += loss(result, image["label"])
+                alpha = 0.0001 if epoch < 3 else 0.001
+
+                # Only gradient descent if training
+                if phase == "Train":
+                    model.backprop(result, image["label"], alpha)
+
+                if image["label"] == np.argmax(result):
+                    correct += 1
+
+            # Training statistics
+            if phase == "Train":
+                train_accuracy.append(correct / len(dataset))
+                train_loss.append(running_loss)
+            else:
+                val_accuracy.append(correct / len(dataset))
+                val_loss.append(running_loss)
+
+
+            print("{} Accuracy:".format(phase), correct / len(dataset))
+            print("{} Loss:".format(phase), running_loss)
+        print()
+
+    # Plot everything
+    plt.plot(normalize(np.array(train_accuracy)), label="Train accuracy")
+    plt.plot(normalize(np.array(train_loss)), label="Train loss")
+    plt.plot(normalize(np.array(val_accuracy)), label="Val accuracy")
+    plt.plot(normalize(np.array(val_loss)), label="Val loss")
+    plt.legend(loc="upper left")
+    plt.show()
+
+    return model
+
+
 if __name__=="__main__":
     data_train = pd.read_csv("data/train.csv")
     data_test = pd.read_csv("data/test.csv")
@@ -162,37 +211,9 @@ if __name__=="__main__":
     test_labels = np.array(data_test.iloc[:, 0])
     test_images = np.array(data_test.iloc[:, 1:]).reshape(data_test.shape[0], 28, 28)
 
-    n = 1000
+    n = 20
     train_data = MnistDataLoader(train_images[:n], train_labels[:n])
     test_data = MnistDataLoader(test_images[:n], test_labels[:n])
     net = Net()
 
-    train_accuracy = []
-    train_loss = []
-    for epoch in range(20):
-        correct = 0
-        counter = 0
-        running_loss = 0
-        for image in tqdm.tqdm(train_data):
-            result = net.forward(image["image"])
-
-            running_loss += loss(result, image["label"])
-            alpha = 0.0001 if epoch < 3 else 0.001
-            net.backprop(result, image["label"], alpha)
-
-            if image["label"] == np.argmax(result):
-                correct += 1
-
-            counter += 1
-
-        train_accuracy.append(correct / counter)
-        train_loss.append(running_loss)
-
-        print("Epoch:", epoch)
-        print("Accuracy:", correct / counter)
-        print("Loss:", running_loss)
-
-    plt.plot(normalize(np.array(train_accuracy)), label="Train accuracy")
-    plt.plot(normalize(np.array(train_loss)), label="Train loss")
-    plt.legend(loc="upper left")
-    plt.show()
+    train_model(net, train_data, test_data, num_epochs=20)
