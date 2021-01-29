@@ -81,24 +81,11 @@ class LinearLayer():
 
 class Net():
     def __init__(self):
-        self.L1 = LinearLayer(784, 50)
-        self.L2 = LinearLayer(50, 10)
-
-        self.layers = [
-            self.L1,
-            self.L2,
-        ]
+        pass
 
     def forward(self, x):
         """Get prediction from nueral net"""
-        x = x.reshape(784)
-
-        x = self.L1.calc(x)
-        x = self.L2.calc(x)
-
-        # x = softmax(x)
-
-        return x
+        pass
 
     def backprop(self, pred, actual, alpha = 0.01):
         t = np.zeros(len(pred))
@@ -203,6 +190,26 @@ def plot_train_data(stats):
     plt.show()
 
 
+class Model(Net):
+    def __init__(self):
+        self.L1 = LinearLayer(784, 50)
+        self.L2 = LinearLayer(50, 10)
+
+        self.layers = [
+            self.L1,
+            self.L2,
+        ]
+
+    def forward(self, x):
+        x = x.reshape(784)
+
+        x = self.L1.calc(x)
+        x = self.L2.calc(x)
+
+        x = softmax(x)
+
+        return x
+
 if __name__=="__main__":
     data_train = pd.read_csv("data/train.csv")
     data_test = pd.read_csv("data/test.csv")
@@ -216,6 +223,6 @@ if __name__=="__main__":
     n = 2000
     train_data = MnistDataLoader(train_images[:n], train_labels[:n])
     test_data = MnistDataLoader(test_images[:n], test_labels[:n])
-    net = Net()
+    net = Model()
 
     train_model(net, train_data, test_data, num_epochs=20)
